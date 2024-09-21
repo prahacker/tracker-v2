@@ -15,7 +15,7 @@ const jwtSecret = 'your_jwt_secret';
 
 // Users database connection
 const usersDb = mysql.createConnection({
-  host: 'testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com',
+  host: '',
   user: 'admin',
   password: 'admin12345678',
   database: 'users'
@@ -23,7 +23,7 @@ const usersDb = mysql.createConnection({
 
 // Stocks database connection
 const stocksDb = mysql.createConnection({
-  host: 'testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com',
+  host: '',
   user: 'admin',
   password: 'admin12345678',
   database: 'stocks'
@@ -31,7 +31,7 @@ const stocksDb = mysql.createConnection({
 
 // Admin database connection
 const adminDb = mysql.createConnection({
-  host: 'testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com',
+  host: '',
   user: 'admin',
   password: 'admin12345678',
   database: 'admin'
