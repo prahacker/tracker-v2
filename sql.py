@@ -5,9 +5,9 @@ import jwt
 
 db_user = 'admin'
 db_password = 'admin12345678'
-db_host = 'testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com'
-stocks_db_name = 'stocks'
-admin_db_name = 'admin'
+db_host = ''
+stocks_db_name = ''
+admin_db_name = ''
 
 jwt_secret = 'your_jwt_secret'
 print(f"Received token: {sys.argv[1]}")
@@ -50,7 +50,7 @@ def main():
 
     print(f"Username: {username}")
 
-    data_file_path = "/Users/prakhartripathi/chartjs-api/data.txt"
+    data_file_path = "/data.txt"
     data = {}
     stock_data = []
 
