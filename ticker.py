@@ -4,12 +4,12 @@ import mysql.connector
 import jwt
 import os
 import re
-finnhub_client = finnhub.Client(api_key="cr1e591r01qo0i57ph10cr1e591r01qo0i57ph1g")
+finnhub_client = finnhub.Client(api_key="")
 
 db_config = {
     'user': 'admin',
     'password': 'admin12345678',
-    'host': 'testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com',
+    'host': '',
     'database': 'stocks'
 }
 jwt_secret = 'your_jwt_secret'
