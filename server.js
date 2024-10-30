@@ -16,25 +16,25 @@ const jwtSecret = 'your_jwt_secret';
 // Users database connection
 const usersDb = mysql.createConnection({
   host: '',
-  user: 'admin',
-  password: 'admin12345678',
-  database: 'users'
+  user: '',
+  password: '',
+  database: ''
 });
 
 // Stocks database connection
 const stocksDb = mysql.createConnection({
   host: '',
-  user: 'admin',
-  password: 'admin12345678',
-  database: 'stocks'
+  user: '',
+  password: '',
+  database: ''
 });
 
 // Admin database connection
 const adminDb = mysql.createConnection({
   host: '',
-  user: 'admin',
-  password: 'admin12345678',
-  database: 'admin'
+  user: '',
+  password: '',
+  database: ''
 });
 
 // Connect to databases
@@ -138,6 +138,154 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+app.post('/send-otp', authenticateToken, async (req, res) => {
+  const username = req.user.id;
+
+  usersDb.query('SELECT email_id FROM user WHERE username = ?', [username], async (err, results) => {
+    if (err) {
+      console.error('Database error while fetching email:', err);
+      return res.status(500).send('Internal server error');
+    }
+
+    if (results.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    // Generate a 6-digit OTP
+    const otp = crypto.randomInt(100000, 999999);
+
+    // Store the OTP in the user's record in the database
+    usersDb.query('UPDATE user SET otp = ? WHERE username = ?', [otp, username], async (err) => {
+      if (err) {
+        console.error('Database error while saving OTP:', err);
+        return res.status(500).send('Internal server error');
+      }
+
+      const email = results[0].email_id;
+
+      try {
+        // Send OTP via Flask server
+        const flaskServerUrl = 'http://localhost:5000/send-otp';  // Replace with your Flask server URL
+        const response = await axios.post(flaskServerUrl, {
+          email: email,
+          otp: otp
+        });
+
+        if (response.status === 200) {
+          res.status(200).send('OTP sent to your email');
+        } else {
+          res.status(500).send('Failed to send OTP');
+        }
+      } catch (error) {
+        console.error('Error calling Flask server to send OTP:', error.message);
+        res.status(500).send('Failed to send OTP via Flask server');
+      }
+    });
+  });
+});
+
+// Verify OTP API
+app.post('/verify-otp', authenticateToken, (req, res) => {
+  const username = req.user.id;
+  const { otp } = req.body;
+
+  usersDb.query('SELECT otp FROM user WHERE username = ?', [username], (err, results) => {
+    if (err) {
+      console.error('Database error while fetching OTP:', err);
+      return res.status(500).send('Internal server error');
+    }
+
+    if (results.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    if (results[0].otp === otp) {
+      res.status(200).send('OTP verified successfully');
+    } else {
+      res.status(400).send('Invalid OTP');
+    }
+  });
+});
+
+app.post('/save-password', authenticateToken, async (req, res) => {
+  const username = req.user.id;
+  const { newPassword } = req.body;
+
+  usersDb.query('SELECT email_id FROM user WHERE username = ?', [username], async (err, results) => {
+    if (err) {
+      console.error('Database error while fetching email:', err);
+      return res.status(500).send('Internal server error');
+    }
+
+    if (results.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    const email = results[0].email_id;
+
+    try {
+      // Call the Flask server to send a new OTP before saving the password
+      const flaskServerUrl = 'http://localhost:5000/send-otp';
+      const response = await axios.post(flaskServerUrl, {
+        email: email
+      });
+
+      if (response.status === 200) {
+        res.status(200).send('A new OTP has been sent to your email. Please verify to save the password.');
+      } else {
+        res.status(500).send('Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('Error calling Flask server to send OTP:', error.message);
+      res.status(500).send('Failed to send OTP via Flask server');
+    }
+  });
+});
+
+// Verify OTP and Update Password
+app.post('/verify-otp-save-password', authenticateToken, async (req, res) => {
+  const username = req.user.id;
+  const { otp, newPassword } = req.body;
+
+  usersDb.query('SELECT email_id FROM user WHERE username = ?', [username], async (err, results) => {
+    if (err) {
+      console.error('Database error while fetching email:', err);
+      return res.status(500).send('Internal server error');
+    }
+
+    if (results.length === 0) {
+      return res.status(404).send('User not found');
+    }
+
+    const email = results[0].email_id;
+
+    try {
+      // Verify the OTP with the Flask server
+      const flaskServerUrl = 'http://localhost:5000/verify-otp';
+      const response = await axios.post(flaskServerUrl, {
+        email: email,
+        otp: otp
+      });
+
+      if (response.status === 200 && response.data.verified) {
+        // OTP is verified, proceed to update the password
+        usersDb.query('UPDATE user SET password = ? WHERE username = ?', [newPassword, username], (err) => {
+          if (err) {
+            console.error('Database error while updating password:', err);
+            return res.status(500).send('Internal server error');
+          }
+
+          res.status(200).send('Password updated successfully');
+        });
+      } else {
+        res.status(400).send('Invalid OTP');
+      }
+    } catch (error) {
+      console.error('Error verifying OTP with Flask server:', error.message);
+      res.status(500).send('Failed to verify OTP via Flask server');
+    }
+  });
+});
 
 // Get user-specific percentage data
 app.get('/api/percentage-data', authenticateToken, (req, res) => {
@@ -181,7 +329,9 @@ app.get('/api/holdings', authenticateToken, (req, res) => {
     res.json(results);
   });
 });
-
+app.get('/verify-otp', authenticateToken,(req,res) => {
+  
+});
 // Get user-specific financial data for graphs
 app.get('/api/data', authenticateToken, (req, res) => {
   const username = req.user.id;
@@ -217,8 +367,8 @@ app.get('/api/data', authenticateToken, (req, res) => {
 app.post('/run-script', authenticateToken, (req, res) => {
   const token = req.headers['authorization'].split(' ')[1]; // Extract the token from the Authorization header
 
-  // Pass the token as an argument to the Python script
-  const command = `python /Users/prakhartripathi/chartjs-api/driver.py ${token}`;
+  // Pass the token as an argument to the Python scripta
+  const command = `python3 /Users/prakhartripathi/chartjs-api/combined.py ${token}`;
   exec(command, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error executing script: ${error.message}`);
@@ -240,7 +390,7 @@ app.post('/changedate', authenticateToken, (req, res) => {
   console.log('Request body:', req.body);
 
   const { oldDate, newDate } = req.body;
-
+  
   if (!oldDate || !newDate) {
     return res.status(400).json({ error: 'oldDate and newDate are required' });
   }
@@ -288,6 +438,91 @@ app.get('/transactions', authenticateToken, (req, res) => {
 });
 
 // Get user profile data
+const multer = require('multer');
+const upload = multer(); // For handling multipart form-data
+
+app.post('/profileedit', authenticateToken, upload.single('profilePicture'), (req, res) => {
+  const username = req.user.id;
+  const { newUsername, email, password } = req.body;
+  const profilePicture = req.file ? req.file.buffer : null; // profilePicture is handled as BLOB
+
+  let query = 'UPDATE user SET ';
+  const queryParams = [];
+
+  // Check for which fields need to be updated
+  if (newUsername) {
+    query += 'username = ?, ';
+    queryParams.push(newUsername);
+  }
+
+  if (email) {
+    query += 'email_id = ?, ';
+    queryParams.push(email);
+  }
+
+  if (password) {
+    query += 'password = ?, ';
+    queryParams.push(password);
+  }
+
+  
+  query = query.slice(0, -2); // Remove trailing comma
+  query += ' WHERE username = ?';
+  queryParams.push(username);
+
+  usersDb.query(query, queryParams, (err, result) => {
+    if (err) {
+      console.error('Database error while updating profile:', err);
+      return res.status(500).send('Internal server error');
+    }
+
+    res.status(200).send('Profile updated successfully');
+  });
+});
+app.get('/carddata', authenticateToken, (req, res) => {
+  const username = req.user.id; // This holds the username and is used as the table name
+  
+  // Dynamically construct the query using the table name from the username
+  const query = `
+    SELECT total_return_text, one_day_return_text 
+    FROM ?? 
+    ORDER BY date DESC 
+    LIMIT 1
+  `;
+
+  adminDb.query(query, [username], (err, result) => {
+    if (err) {
+      console.error('Database query error:', err);  // Log the error details
+      return res.status(500).json({ error: 'Database query failed', details: err.message });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'No data found for user' });
+    }
+
+    const totalReturnText = result[0].total_return_text;
+    const oneDayReturnText = result[0].one_day_return_text;
+
+    // Extract percentage from total_return_text and one_day_return_text
+    const totalReturnPercentage = totalReturnText.match(/\(([^)]+)\)/)[1]; // Matches the percentage in parentheses
+    const oneDayReturnPercentage = oneDayReturnText.match(/\(([^)]+)\)/)[1];
+
+    // Extract the actual value of total return and one-day return
+    const totalReturnValue = totalReturnText.match(/[+-]₹[0-9,]+/)[0];
+    const oneDayReturnValue = oneDayReturnText.match(/[+-]₹[0-9,]+/)[0];
+
+    // Send the response
+    res.json({
+      totalReturnValue,
+      totalReturnPercentage,
+      oneDayReturnValue,
+      oneDayReturnPercentage
+    });
+  });
+});
+
+
+// Fetch profile details including the profile image
 app.get('/profile', authenticateToken, (req, res) => {
   const username = req.user.id;
 
@@ -301,9 +536,13 @@ app.get('/profile', authenticateToken, (req, res) => {
       return res.status(400).send('User not found');
     }
 
-    res.status(200).json(results[0]);
+    const user = results[0];
+    
+
+    res.status(200).json(user);
   });
 });
+
 
 // Delete user account and associated data
 app.delete('/delete-account', authenticateToken, (req, res) => {
