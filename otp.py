@@ -11,11 +11,11 @@ import boto3
 import os
 
 # Use AWS SES SMTP settings
-SMTP_SERVER = 'email-smtp.ap-south-1.amazonaws.com'  # Change this to the region you're using SES in
+SMTP_SERVER = ''  # Change this to the region you're using SES in
 SMTP_PORT = 587  
-SENDER_EMAIL = 'portfolio@prahacker.xyz'  # Replace with your verified email in SES
-SES_SMTP_USERNAME = 'AKIAYLIJXKNIUIKG3AQ7'  # SMTP credentials from SES
-SES_SMTP_PASSWORD = 'BImT0DVULQqVtvvOuHR19yPZIcuSxuf89wyU8UOm6iy3'
+SENDER_EMAIL = ''  # Replace with your verified email in SES
+SES_SMTP_USERNAME = ''  # SMTP credentials from SES
+SES_SMTP_PASSWORD = ''
 
 
 app = Flask(__name__)
@@ -28,10 +28,10 @@ CORS(app, resources={r"/*": {"origins": "http://localhost:3001"}}, methods=['GET
 # Connect to MySQL database
 try:
     usersDb = mysql.connector.connect(
-        host='testgroww.cxgwkco2aeaf.ap-south-1.rds.amazonaws.com',
-        user='admin',
-        password='admin12345678',
-        database='users'
+        host='',
+        user='',
+        password='',
+        database=''
     )
 except mysql.connector.Error as err:
     print(f"Error connecting to MySQL: {err}")
